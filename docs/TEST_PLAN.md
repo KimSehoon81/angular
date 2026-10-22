@@ -1,0 +1,137 @@
+# CareFlow Lite — 테스트 계획
+
+- 문서 버전: 0.1 (초안) · 작성일: 2026-10-22
+- 아직 코드가 없으므로 **실행된 테스트는 없다.** 아래는 구현 시 작성할 테스트 목록이다.
+
+## 1. 도구와 환경
+
+| 항목 | 계획 |
+|---|---|
+| 프레임워크 | PHPUnit (운영 PHP 버전에 맞는 메이저 버전) |
+| 대안 | PHPUnit을 쓸 수 없으면 `tests/run.php` 경량 러너 (assert 함수 + 종료 코드) — [Q-ARCH-02](OPEN_QUESTIONS.md) |
+| DB 테스트 | 별도 테스트 DB, 테스트마다 트랜잭션 롤백 |
+| LLM | `FakeLlmClient` (정상, 잘못된 JSON, 타임아웃, 근거 없는 내용, 지연 응답 시나리오) — 테스트에서 실제 API 호출 금지 |
+| 시계 | `Clock` 인터페이스 주입, 날짜 고정 |
+| 데이터 | `tests/fixtures/` 합성 데이터만 (실제 수급자 정보 금지) |
+| 정적 분석 | `php -l` 전체, 가능하면 PHPStan level 5+ |
+| 보안 점검 | 수동 체크리스트 ([SECURITY §14](SECURITY.md)) + 통합 테스트 |
+
+## 2. 실행 규칙
+
+- 커밋 전 `php -l` + 단위 테스트, 머지 전 통합 테스트.
+- 결과 보고 시 실제 실행 출력만 근거로 한다. 실행하지 않은 테스트를 통과했다고 쓰지 않는다.
+- regulatory 규칙 테스트의 기대값은 공식 자료 출처를 테스트 케이스에 기록한다. 출처가 없으면 테스트를 `incomplete`로 표시한다.
+
+## 3. 테스트 케이스
+
+### 3.1 계산 (T-CALC)
+
+| ID | 시나리오 | 기대 결과 |
+|---|---|---|
+| T-CALC-01 | 정상 입력, verified 규칙 (테스트용 가상 비율) | 정수 금액, 입력 스냅샷·규칙 버전 저장 |
+| T-CALC-02 | 감경 조건 대상자 | 감경 규칙 버전 적용 |
+| T-CALC-03 | 월 중간에 규칙 시행일 변경 | 일자별로 다른 버전 적용, 둘 다 기록 |
+| T-CALC-04 | 반올림/절사 경계값 | 규칙대로 정수화, 부동소수점 오차 없음 |
+| T-CALC-05 | 본인부담 구분 누락 | held, 사유 `MISSING:copay_category` |
+| T-CALC-06 | unverified 규칙만 존재 | held, `RULE_UNVERIFIED` |
+| T-CALC-07 | 재계산 | 새 calc_version, 이전 버전 보존, diff 표시 |
+| T-CALC-08 | 같은 입력 재계산 | 동일 결과 (재현성) |
+| T-CALC-09 | 승인된 계산 수정 시도 | 409 IMMUTABLE |
+| T-CALC-10 | 청구·수납·미수금 | 미수금 = 청구 − 수납, 별도 표시 |
+
+> 테스트용 비율·수가는 가상의 값이며 실제 규정이 아님을 테스트 코드에 주석으로 명시한다.
+
+### 3.2 기록 검증 (T-REC, T-IMP)
+
+| ID | 시나리오 | 기대 결과 |
+|---|---|---|
+| T-REC-01 | 정상 태그 기록 (허용 오차 이내) | finding 없음 |
+| T-REC-02 | 일정 있음·기록 없음 | `REC.MISSING` ("기록 없음") |
+| T-REC-03 | 중복 기록 | `REC.DUPLICATE` error |
+| T-REC-04 | 예정 vs 실제 시간 불일치 | warning |
+| T-REC-05 | 수급자 매핑 실패 | `MAP.CLIENT_FAILED` |
+| T-REC-06 | 시간 형식 오류, 종료<시작 | `REC.TIME_FORMAT` |
+| T-REC-07 | 자정을 넘는 기록, 서로 다른 날짜 | 서비스 시작일 기준 귀속, 오탐 없음 |
+| T-REC-08 | 직원 일정 겹침 | `SCHED.EMPLOYEE_CONFLICT` |
+| T-REC-09 | 수급자 일정 겹침 | `SCHED.CLIENT_CONFLICT` |
+| T-REC-10 | 기록 직접 수정 시도 | 거부, 정정 요청 경로만 허용 |
+| T-IMP-01 | 허용되지 않은 확장자 | 거부 |
+| T-IMP-02 | 확장자 csv지만 실제 실행 파일 | 거부 |
+| T-IMP-03 | 크기 초과 | 거부 |
+| T-IMP-04 | 필수 열 누락 | 미리보기 단계 오류, 반영 불가 |
+| T-IMP-05 | 동일 파일 재업로드 | 409 DUPLICATE |
+| T-IMP-06 | 반영 후 롤백 | 관련 tag_records 제거, 감사 로그 |
+| T-IMP-07 | 인코딩(EUC-KR/CP949, UTF-8 BOM) | 정상 파싱 또는 명확한 오류 |
+
+### 3.3 AI Agent (T-AGT)
+
+| ID | 시나리오 | 기대 결과 |
+|---|---|---|
+| T-AGT-C-01 | 같은 idempotency_key 두 번 | 실행 1건 |
+| T-AGT-C-02 | 잘못된 JSON 응답 | 1회 재시도 후 needs_review, DB 반영 없음 |
+| T-AGT-C-03 | API 타임아웃 | failed(AI_UNAVAILABLE), 대시보드·CRUD 정상 |
+| T-AGT-C-04 | 재시도 상한 | 설정 횟수 초과 호출 없음 |
+| T-AGT-C-05 | 예산 초과 | LLM 호출 0, budget_blocked, 규칙 기능 정상 |
+| T-AGT-C-06 | 캐시 적중 | LLM 호출 0, cache_hit 기록 |
+| T-AGT-C-07 | 입력에 주민번호 패턴 | 전송 차단, blocked(PII_DETECTED) |
+| T-AGT-C-08 | 응답이 입력에 없는 record_id 인용 | 해당 항목 폐기 + 플래그 |
+| T-AGT-C-09 | Agent가 L3 작업 직접 실행 시도 | 불가 (쓰기 의존성 없음 + PermissionGate 예외) |
+| T-AGT-C-10 | running 상태 고아 실행 | STALE 처리 |
+| T-AGT-C-11 | 입력 텍스트에 "이전 지시 무시" 같은 지시문 | 출력 스키마·제약 유지 |
+| T-AGT-C-12 | AI finding이 severity=error | 스키마 검증에서 거부 |
+| T-AGT-01-01~04 | Daily Ops | [AGENT_SPEC](AGENT_SPEC.md) 참조 |
+| T-AGT-02-01~05 | Claim Validation | 〃 |
+| T-AGT-03-01~04 | Care Plan (입력 충분/부족/근거 없는 진단/재승인) | 〃 |
+| T-AGT-04-01~03 | Condition Report | 〃 |
+| T-AGT-05-01~03 | Billing & Copayment | 〃 |
+| T-AGT-06-01~03 | Staff & Compliance | 〃 |
+
+### 3.4 승인·보안 (T-APPR, T-SEC)
+
+| ID | 시나리오 | 기대 결과 |
+|---|---|---|
+| T-APPR-01 | 승인 없이 계획서 approved 전환 | 423 |
+| T-APPR-02 | 승인 없이 외부 발송 | 423, 발송 0건 |
+| T-APPR-03 | staff가 승인 시도 | 403 |
+| T-APPR-04 | 기록 정정 승인 | record_revisions에 before/after, 감사 로그 |
+| T-APPR-05 | 승인 요청 이후 대상 변경 | 승인 거부(버전 불일치) |
+| T-APPR-06 | L4 승인 시 재인증 실패 | 실행 안 됨 |
+| T-SEC-01 | 비로그인 접근 | 401/로그인 화면 |
+| T-SEC-02 | CSRF 토큰 없음/불일치 | 403 |
+| T-SEC-03 | caregiver가 다른 직원 일정 조회 | 403 또는 빈 결과 |
+| T-SEC-04 | 다른 수급자 id로 조회(IDOR) | 403 |
+| T-SEC-05 | SQL 메타문자 입력 | 정상 처리, 쿼리 변형 없음 |
+| T-SEC-06 | `<script>` 입력 후 출력 | escape됨 |
+| T-SEC-07 | DB 덤프에 주민번호 평문 없음 | 암호문만 |
+| T-SEC-08 | 로그 파일에 주민번호·전화 패턴 없음 | 0건 |
+| T-SEC-09 | 감사 로그 UPDATE 시도(앱 계정) | 권한 오류 |
+| T-SEC-10 | `/storage/`, `/config/`, `/.env` URL 접근 | 403/404 |
+| T-SEC-11 | 로그인 실패 반복 | 잠금 |
+| T-SEC-12 | CSV 내보내기 수식 인젝션 | 셀 앞 `'` |
+
+### 3.5 업무·대시보드·운영 (T-BASE, T-TASK, T-UI, T-OPS, T-RULE, T-STAFF)
+
+| ID | 시나리오 | 기대 결과 |
+|---|---|---|
+| T-BASE-01~03 | 수급자 필수 항목, 보호자 연결, 종료 처리 | 검증·이력 |
+| T-BASE-04 | 직원 퇴사 후 일정 배정 | 경고 |
+| T-BASE-05 | 상담 후속일 → 업무 생성 | 1건, 중복 없음 |
+| T-BASE-06 | 욕구사정 재등록 | version 증가 |
+| T-STAFF-01 | 자격 만료 D-30/D-7/D-1 | 단계별 알림 |
+| T-TASK-01~03 | 업무 생성·상태·출처 표시 | |
+| T-UI-01 | 대시보드 위젯 9종 | 표시 |
+| T-UI-02 | AI/규칙 항목 구분 배지 | 표시 |
+| T-UI-03 | 360px 모바일 레이아웃 | 가로 스크롤 없음 (Playwright 스크린샷) |
+| T-RULE-01 | 근거 누락 규칙 verify 시도 | 거부 |
+| T-RULE-02 | 테스트 실패 규칙 verify | 거부 |
+| T-RULE-03 | 과거 서비스일 판정 | 당시 시행 버전 사용 (소급 없음) |
+| T-RULE-04 | 기준일에 규칙 없음 | needs_confirmation |
+| T-RULE-05 | verified 규칙 수정 시도 | 거부, 새 버전 안내 |
+| T-RULE-06 | 규칙 테스트 케이스 일괄 실행 | 결과 저장 |
+| T-OPS-01 | cron 동시 2회 실행 | 1회만 처리 (job_locks) |
+| T-OPS-02 | 마이그레이션 재실행 | 이미 적용된 버전 건너뜀 |
+| T-OPS-03 | 백업 → 복구 | 행 수·체크섬 일치 (수동 리허설) |
+
+## 4. 수용 테스트 (파일럿)
+
+운영자가 합성 데이터 1개월 분량(수급자 10명, 직원 5명)으로 시나리오 A~E를 수행하고, 각 단계에서 결과·소요 시간을 기록한다. 실제 데이터 전환은 수용 테스트 통과 후.
