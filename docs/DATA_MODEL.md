@@ -1,6 +1,6 @@
 # CareFlow Lite — 데이터 모델
 
-- 문서 버전: 0.1 (초안) · 작성일: 2026-10-22
+- 문서 버전: 0.2 (초안) · 작성일: 2026-10-22 · 개정: 2026-10-23 (서식 양식집 반영, [FORMS](FORMS.md))
 - 기존 스키마 없음 → 신규 설계. 실제 DDL은 구현 단계에서 `database/migrations/`로 작성한다.
 - 공통: InnoDB, `utf8mb4` / `utf8mb4_unicode_ci`, 기본키 `BIGINT UNSIGNED AUTO_INCREMENT`, 시각은 `DATETIME`(세션 타임존 `+09:00` 고정), 날짜는 `DATE`.
 
@@ -30,6 +30,7 @@ clients ─< client_guardians >─ guardians
    ├─< consultations
    ├─< assessments ─< care_plans ─< document_versions
    ├─< service_schedules ─< service_records ─< record_revisions
+   ├─< condition_observations (주간/월간 상태변화기록)
    │          ▲                    ▲
    │          └──── tag_records ───┘ (매칭 결과)
    ├─< copayment_calculations ─< copayment_calc_items
@@ -70,7 +71,7 @@ settings, job_locks, schema_migrations, login_attempts
 
 **login_attempts** — username_hash, ip, attempted_at, success. 인덱스 (username_hash, attempted_at).
 
-**settings** — `key` VARCHAR(64) PK, `value` JSON, updated_by, updated_at. (예: AI 월 예산, 태그 허용 오차 분, 알림 D-일수)
+**settings** — `key` VARCHAR(64) PK, `value` JSON, updated_by, updated_at. (예: `center.institution_code` 장기요양기관기호, `ltc_grades`, `service_items`(기록지 세부 항목 코드), 태그 허용 오차 분, 알림 D-일수, `ai.enabled`=false)
 
 **job_locks** — name PK, locked_at, locked_by, expires_at.
 
@@ -88,9 +89,9 @@ settings, job_locks, schema_migrations, login_attempts
 | gender | VARCHAR(8) | |
 | rrn_enc | VARBINARY(255) NULL | 주민등록번호 암호문 |
 | rrn_hmac | CHAR(64) NULL, INDEX | 중복 확인용 |
-| ltc_number_enc | VARBINARY NULL | 장기요양인정번호 암호문 |
+| ltc_number_enc | VARBINARY NULL | 장기요양인정번호 암호문 (서식상 `L`로 시작) |
 | ltc_number_hmac | CHAR(64) NULL, INDEX | 공단 파일 매핑용 |
-| ltc_grade | VARCHAR(16) | 장기요양등급 (값 목록은 규칙 데이터로 관리) |
+| ltc_grade | VARCHAR(16) | 장기요양등급 코드 `G1`~`G5`, `COG`(인지지원등급). 목록은 `settings.ltc_grades` |
 | grade_valid_from / grade_valid_to | DATE | 인정 유효기간 |
 | copay_category | VARCHAR(32) NULL | 본인부담 구분 코드 (값과 비율은 billing_rules) |
 | address, phone_enc | | |
@@ -149,13 +150,29 @@ settings, job_locks, schema_migrations, login_attempts
 |---|---|
 | id, schedule_id FK NULL, client_id, employee_id | 일정 없는 기록 허용 (경고 대상) |
 | service_date, actual_start, actual_end | |
-| content JSON | 제공 서비스 항목 |
-| observations JSON | 식사·이동·위생·인지·정서 등 구조화 관찰 |
+| form_version | VARCHAR(32) | 기록지 서식 버전 (예: `home_care_v1`) |
+| content JSON | 4개 영역(신체활동·인지관리·일상생활·정서지원)별 완료 여부·소요시간·세부 항목 ([FORMS §1.2](FORMS.md)) |
+| observations JSON | 상태 관찰 4개 항목(신체·건강 / 식사·복약 / 인지·정서 / 배변) 선택형 값 ([FORMS §2](FORMS.md)) |
+| total_minutes | SMALLINT, 영역별 소요시간 합 (저장 시 PHP 계산) |
 | notes TEXT | 특이사항 |
 | revision | 정정 시 증가 |
 | status | draft / submitted / locked(청구 확정 후) |
 
 UNIQUE(schedule_id) — 일정당 기록 1건 (분할 방문 정책은 [Q-BIZ-03](OPEN_QUESTIONS.md)).
+
+**condition_observations** (상태변화기록지, 주간/월간)
+| 컬럼 | 설명 |
+|---|---|
+| id, client_id FK | |
+| period_type | weekly / monthly |
+| period_from, period_to | |
+| items JSON | 점검 항목 4개 × {상태 및 변화 내용, 조치 사항 및 특이사항} |
+| auto_metrics JSON | 일별 관찰값에서 PHP가 집계한 지표 + 근거 record_id |
+| source | auto_draft / human |
+| status | draft / submitted / approved |
+| written_by, approved_by, approved_at | |
+
+UNIQUE(client_id, period_type, period_from).
 
 **record_revisions** — id, record_id, revision, before JSON, after JSON, reason, requested_by, approval_id FK, created_at. (정정·삭제 이력, 수정 불가)
 
@@ -301,7 +318,7 @@ UNIQUE(client_id, period_ym, calc_version). 확정(approved) 행은 수정 불�
 | requested_by, decided_by, decided_at, decision_note | |
 | executed_at | |
 
-**ai_runs**
+**ai_runs** (보류 — LLM 재개 시 생성)
 | 컬럼 | 설명 |
 |---|---|
 | id, agent_run_id | |

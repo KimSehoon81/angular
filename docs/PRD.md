@@ -1,9 +1,9 @@
 # CareFlow Lite — 제품 요구사항 정의서 (PRD)
 
-- 문서 버전: 0.1 (초안)
-- 작성일: 2026-10-22
+- 문서 버전: 0.2 (초안)
+- 작성일: 2026-10-22 · 개정: 2026-10-23 (운영자 답변 반영)
 - 상태: **검토 대기** — 구현 착수 전 운영자 승인 필요
-- 관련 문서: [ARCHITECTURE](ARCHITECTURE.md) · [DATA_MODEL](DATA_MODEL.md) · [API_SPEC](API_SPEC.md) · [AGENT_SPEC](AGENT_SPEC.md) · [RULE_ENGINE_SPEC](RULE_ENGINE_SPEC.md) · [SECURITY](SECURITY.md) · [TEST_PLAN](TEST_PLAN.md) · [OPEN_QUESTIONS](OPEN_QUESTIONS.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md)
+- 관련 문서: [ARCHITECTURE](ARCHITECTURE.md) · [DATA_MODEL](DATA_MODEL.md) · [API_SPEC](API_SPEC.md) · [AGENT_SPEC](AGENT_SPEC.md) · [RULE_ENGINE_SPEC](RULE_ENGINE_SPEC.md) · [SECURITY](SECURITY.md) · [TEST_PLAN](TEST_PLAN.md) · [OPEN_QUESTIONS](OPEN_QUESTIONS.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) · [FORMS](FORMS.md)
 
 ---
 
@@ -18,8 +18,14 @@
 | 운영 서버 MySQL/MariaDB 버전 | **미확인** | |
 | Apache 설정 (DocumentRoot, mod_rewrite, AllowOverride) | **미확인** | |
 | 배포 방식 (FTP, git pull, rsync 등) | **미확인** | |
-| cron 사용 가능 여부 | **미확인** | 공유호스팅이면 제한될 수 있음 |
-| 저장소 이름 | `angular` | 프로젝트 성격(PHP ERP)과 이름이 맞지 않음 → [OPEN_QUESTIONS Q-ENV-05](OPEN_QUESTIONS.md) |
+| cron 사용 가능 여부 | **가능** (운영자 답변 2026-10-23) | 최소 주기는 미확인 |
+| 저장소 | **새 저장소를 만든다** (운영자 답변) | 현재 `angular` 저장소에는 설계 문서만 둔다. 새 저장소가 생기면 문서를 옮기고 코드는 거기서만 작성 → [Q-ENV-09](OPEN_QUESTIONS.md) |
+| 서식 | 「재가장기요양기관 필수 서식 표준 양식집」 제공 | [FORMS.md](FORMS.md)로 데이터 모델에 매핑 |
+
+### 0.1 범위 결정 (2026-10-23)
+
+- **외부 LLM 호출 기능은 이번 범위에서 제외한다.** 개인정보 전송 검토(Q-LEGAL-01)를 보류했기 때문이다. Agent는 모두 PHP 규칙·템플릿으로 동작하도록 설계하고, LLM 연동부(`LlmClient`, `Redactor`, 비용 관리)는 인터페이스 자리만 남긴다. 설정 `ai.enabled`의 기본값은 `false`이며, 보류가 풀리기 전에는 켤 수 없다.
+- 이 결정으로 Care Plan Agent의 자유 서술 초안, 상담 요약 같은 "자연어 생성" 기능은 보류되고, 구조화된 입력을 템플릿에 채우는 방식만 남는다.
 
 **결론**: 기존 코드가 없어서 삭제·교체 위험은 없다. 대신 운영 환경을 확인하지 않았으므로 PHP 버전에 의존하는 기능(enum, readonly 속성 등)은 환경 확인 전까지 확정하지 않는다. 설계는 **PHP 8.1 이상, MySQL 8.0 / MariaDB 10.6 이상**을 잠정 기준으로 하며, 이 기준은 [Q-ENV-01~04](OPEN_QUESTIONS.md)가 답변되면 확정한다.
 
@@ -65,6 +71,7 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 - 의료적 진단·처방
 - 상시 실행되는 AI 서버, Node.js/Python 백엔드, 메시지 브로커
 - 다중 센터(멀티 테넌트) 운영 — 확장 여지만 남긴다
+- **외부 LLM API 호출** — 개인정보 전송 검토 전까지 보류 (§0.1)
 - 급여(인건비) 계산·4대보험 신고
 
 ## 4. 사용자
@@ -137,7 +144,9 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 |---|---|---|
 | FR-SVC-01 | 방문 일정 등록(수급자, 직원, 날짜, 시작·종료 예정 시각, 급여 종류), 반복 일정 | P0 |
 | FR-SVC-02 | 같은 직원의 시간 중복, 같은 수급자의 시간 중복 탐지 | P0 |
-| FR-SVC-03 | 서비스 기록 입력(실제 시각, 제공 내용, 관찰 항목: 식사·이동·위생·인지·정서·특이사항) | P0 |
+| FR-SVC-03 | 서비스 기록 입력: 실제 시각, 4개 영역(신체활동·인지관리·일상생활·정서지원) 완료 여부와 소요시간, 상태 관찰 4개 항목(신체·건강 / 식사·복약 / 인지·정서 / 배변). 형식은 [FORMS §1~2](FORMS.md) | P0 |
+| FR-SVC-07 | 기록지 필수 항목 누락 검사 (`FORM.HOMECARE.REQUIRED`), 영역별 소요시간 합계와 방문 시간 비교 | P0 |
+| FR-SVC-08 | 주간 상태변화기록 작성(점검 항목별 상태·변화 내용과 조치 사항), 일별 관찰값으로 자동 채운 초안 제공 | P1 |
 | FR-SVC-04 | 서비스 기록 정정·삭제는 승인 요청을 거치고 변경 이력을 남김 | P0 |
 | FR-SVC-05 | 일정 대비 기록 누락 탐지 ("기록 없음"과 "미제공"을 구분) | P0 |
 | FR-SVC-06 | 모바일 반응형 기록 입력 화면 | P0 |
@@ -175,7 +184,7 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-BILL-05 | 전월 대비, 이전 계산 대비 차이 표시 | P0 |
 | FR-BILL-06 | 청구액·수납액·미수금을 별도 항목으로 관리 | P0 |
 | FR-BILL-07 | 정산 내역 CSV 내보내기, 인쇄용 화면 | P0 |
-| FR-BILL-08 | 보호자 안내 문구 초안 생성 (템플릿 기반, 선택적 AI 다듬기) | P1 |
+| FR-BILL-08 | 보호자 안내 문구 초안 생성 (템플릿 기반) | P1 |
 | FR-BILL-09 | 정산 확정은 운영자 승인 필수 | P1 |
 
 ### 6.7 업무·알림·대시보드 (TASK / DASH)
@@ -196,13 +205,14 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | ID | 요구사항 | 우선순위 |
 |---|---|---|
 | FR-AGT-00 | 공통 실행 엔진(큐, 상태, 멱등성, 스키마 검증, 감사 로그) | P0 |
-| FR-AGT-01 | Daily Operations Agent — 규칙 기반 기본 기능 (LLM 없이 동작) | P0 |
-| FR-AGT-02 | Claim Validation Agent | P1 |
-| FR-AGT-03 | Care Plan Agent | P1 |
-| FR-AGT-04 | Monthly Condition Report Agent | P1 |
-| FR-AGT-05 | Billing & Copayment Agent (계산은 엔진, Agent는 조율·초안) | P1 |
+| FR-AGT-01 | Daily Operations Agent — 규칙 기반 | P0 |
+| FR-AGT-02 | Claim Validation Agent — 규칙 기반 | P1 |
+| FR-AGT-03 | Care Plan Agent — **템플릿 모드**: 욕구사정 구조화 항목을 계획서 템플릿에 채우고 근거 연결·누락 표시. 자유 서술 생성은 보류 | P1 |
+| FR-AGT-04 | Monthly Condition Report Agent — **템플릿 모드**: 주간 상태변화기록과 일별 관찰값을 PHP로 집계해 월간 보고서 초안 생성 | P1 |
+| FR-AGT-05 | Billing & Copayment Agent — 계산은 엔진, 안내 문구는 템플릿 | P1 |
 | FR-AGT-06 | Staff & Compliance Agent — 규칙 기반 (P0 일부: 자격증 만료) | P0/P1 |
-| FR-AGT-07 | Consultation 요약 (시나리오 A의 상담 요약; Agent 6종에 포함되지 않는 보조 작업) | P1 |
+| FR-AGT-07 | 상담 요약 (LLM 필요) | **보류** |
+| FR-AGT-09 | LLM 모드 (Agent 3·4의 자연어 초안, 예외 설명, 안내 문구 다듬기) | **보류** (Q-LEGAL-01) |
 | FR-AGT-08 | Agent 권한 레벨 L0~L4 적용, L3 이상은 PHP 서비스 + 사람 승인 | P0 |
 
 ### 6.9 승인·문서 (APPR / DOC)
@@ -214,14 +224,16 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-DOC-01 | 문서 상태 `draft → review_required → approved`, 승인 후 변경 시 새 버전 | P1 |
 | FR-DOC-02 | 문서 화면: 원본 자료, AI 초안, 변경 이력, 근거 기록, 누락 항목, 승인 상태, 인쇄·내보내기 | P1 |
 
-### 6.10 AI 비용 관리 (COST)
+### 6.10 AI 비용 관리 (COST) — 보류
+
+LLM 기능 보류(§0.1)에 따라 아래 요구사항도 보류한다. LLM 기능을 재개할 때 함께 구현한다.
 
 | ID | 요구사항 | 우선순위 |
 |---|---|---|
-| FR-COST-01 | 월 예산, 일 호출 수, 최대 입력·출력 토큰, 재시도 횟수 설정 | P1 |
-| FR-COST-02 | 호출별 토큰·모델·추정 비용 기록, 관리자 비용 대시보드 | P1 |
-| FR-COST-03 | 입력 해시 + 프롬프트 버전 기반 결과 재사용 | P1 |
-| FR-COST-04 | 예산 초과 시 비필수 AI 기능 차단, 핵심 ERP 기능은 계속 동작 | P1 |
+| FR-COST-01 | 월 예산, 일 호출 수, 최대 입력·출력 토큰, 재시도 횟수 설정 | 보류 |
+| FR-COST-02 | 호출별 토큰·모델·추정 비용 기록, 관리자 비용 대시보드 | 보류 |
+| FR-COST-03 | 입력 해시 + 프롬프트 버전 기반 결과 재사용 | 보류 |
+| FR-COST-04 | 예산 초과 시 비필수 AI 기능 차단, 핵심 ERP 기능은 계속 동작 | 보류 |
 
 ### 6.11 감사·운영 (AUD / OPS)
 
@@ -242,6 +254,7 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-P2-02 | 규정 변경 검토 보조 (변경 후보 제시만, 자동 반영 금지) | P2 |
 | FR-P2-03 | 직원 배정 보조 | P2 |
 | FR-P2-04 | 방문목욕 확장 모듈 | P2 |
+| FR-P2-05 | 방문간호 확장 모듈 (바이탈·간호 처치·지시서 이행, [FORMS §3](FORMS.md)). 수치는 기록만, 의료 판정 없음 | P2 |
 
 ## 7. 비기능 요구사항
 
@@ -256,16 +269,16 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | NFR-07 | 반응형 | 360px 모바일부터 PC까지 |
 | NFR-08 | 유지보수 | 외부 의존성 최소화. Composer 패키지는 승인된 것만 |
 | NFR-09 | 시간대 | `Asia/Seoul` 기준. DB에는 로컬 시각 + 명시적 타임존 설정 |
-| NFR-10 | 비용 | 추가 AI API 비용 월 10,000원 이내 목표 (보장 아님) |
+| NFR-10 | 비용 | 현재 범위의 추가 AI API 비용 0원 (LLM 보류). 재개 시 월 10,000원 이내 목표 |
 
 ## 8. 핵심 시나리오
 
 | 시나리오 | 흐름 요약 | 관련 요구사항 |
 |---|---|---|
-| A. 신규 수급자 등록 | 등록 → 필수항목 검사 → 상담 요약(선택) → 욕구사정 → 계획서 초안 → 검토·승인 → 버전 저장 → 후속 업무 생성 | BASE-01~07, AGT-03, AGT-07, DOC-01 |
+| A. 신규 수급자 등록 | 등록 → 필수항목 검사 → 욕구사정 → 계획서 초안(템플릿) → 검토·승인 → 버전 저장 → 후속 업무 생성 | BASE-01~07, AGT-03, AGT-07, DOC-01 |
 | B. 매일 방문 관리 | 당일 일정 확인 → 일정·기록 비교 → 태그 검증 → 불일치 업무 등록 → 확인·정정(승인) → 이력 | SVC-*, IMP-*, RULE-04, AGT-01, AGT-02 |
 | C. 월말 청구 준비 | 자료 수집 → 중복·누락·불일치 검사 → 규칙 점검 → 본인부담금 계산 → 오류·경고 표시 → 수정 → 재검증 → 승인 → 사람이 공식 시스템 제출 | AGT-02, AGT-05, BILL-*, APPR-01 |
-| D. 월별 상태변화 보고 | 기록 수집 → 누락·중복 확인 → 요약 → 변화·근거 연결 → 근거 부족 표시 → 검토·확정 | AGT-04, DOC-* |
+| D. 월별 상태변화 보고 | 일별 관찰값 → 주간 상태변화기록 → 월간 취합(PHP 집계) → 변화·근거 연결 → 근거 부족 표시 → 검토·확정 | SVC-08, AGT-04, DOC-* |
 | E. 매일 업무 브리핑 | 로그인 또는 아침 cron → 오늘 방문·누락·불일치·행정 업무·만료 예정·상담 후속·청구 전 항목·전날 미완료 | AGT-01, DASH-01 |
 
 ## 9. 요구사항 추적표 (3단계)
@@ -282,6 +295,8 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-BASE-08 | `Security/Crypto` | clients(rrn_enc) | — | T-SEC-07 | DB 평문 없음, 화면 마스킹 |
 | FR-SVC-01~02 | `Services/ScheduleService`, `Rules/ScheduleConflictRule` | service_schedules | 검증 엔진 | T-REC-08~09 | 중복 일정 경고 |
 | FR-SVC-03~04 | `Services/ServiceRecordService` | service_records, record_revisions, agent_approvals | — | T-REC-10, T-APPR-04 | 정정 시 승인·이력 |
+| FR-SVC-07 | `Rules/HomecareFormRule` | service_records, billing_checks | 규칙 엔진 | T-FORM-01~04 | 누락 항목 경고 |
+| FR-SVC-08 | `Services/ConditionObservationService` | condition_observations | — | T-FORM-05~06 | 일별 관찰값으로 주간 초안 채움 |
 | FR-SVC-05 | `Rules/MissingRecordRule` | service_schedules, service_records, billing_checks | 검증 엔진 | T-REC-02 | "기록 없음" 표시, 미제공 단정 없음 |
 | FR-IMP-01~06 | `Services/Import/*`, `Validators/UploadValidator` | tag_import_batches, tag_records, import_files | 검증 엔진 | T-IMP-01~07 | 동일 해시 차단, 배치 롤백 |
 | FR-RULE-01~03,06 | `Rules/RuleRegistry`, `Services/RuleVersionService` | rule_versions, rule_test_cases | 규칙 엔진 | T-RULE-01~06 | 미검증 규칙 확정 사용 불가 |
@@ -293,12 +308,12 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-AGT-00 | `Agents/AgentRunner`, `Agents/AgentRegistry` | agent_runs, agent_findings, ai_runs | 공통 엔진 | T-AGT-C-01~10 | 멱등·스키마 검증 |
 | FR-AGT-01 | `Agents/DailyOperationsAgent` | tasks, agent_findings | Agent 1 | T-AGT-01-* | LLM 없이 브리핑 생성 |
 | FR-AGT-02 | `Agents/ClaimValidationAgent` | billing_checks | Agent 2 | T-AGT-02-* | 원본 자동 수정 없음 |
-| FR-AGT-03 | `Agents/CarePlanAgent` | care_plans, documents | Agent 3 | T-AGT-03-* | 근거 링크, 누락 시 blocked |
-| FR-AGT-04 | `Agents/ConditionReportAgent` | report_drafts | Agent 4 | T-AGT-04-* | 관찰/해석 구분 |
+| FR-AGT-03 | `Agents/CarePlanAgent` (템플릿 모드) | care_plans, documents | Agent 3 | T-AGT-03-* | 근거 링크, 누락 시 blocked |
+| FR-AGT-04 | `Agents/ConditionReportAgent` (템플릿 모드) | condition_observations, report_drafts | Agent 4 | T-AGT-04-* | 집계값마다 근거 기록 링크 |
 | FR-AGT-06 | `Agents/StaffComplianceAgent` | employee_credentials, tasks | Agent 6 | T-AGT-06-* | 자료 부족 시 "판정 불가" |
 | FR-AGT-08 | `Agents/PermissionGate` | agent_approvals | 공통 엔진 | T-AGT-C-09, T-APPR-* | L3+ 우회 불가 |
 | FR-APPR-01~02, FR-DOC-* | `Workflows/ApprovalWorkflow`, `Services/DocumentService` | agent_approvals, documents, document_versions | — | T-APPR-01~06 | 승인 후 수정 시 새 버전 |
-| FR-COST-01~04 | `Services/Ai/LlmClient`, `Services/Ai/BudgetGuard` | ai_runs, settings | 공통 엔진 | T-AGT-C-05~06 | 예산 초과 시 차단, ERP 정상 |
+| FR-COST-01~04 | (보류) | — | — | — | — |
 | FR-AUD-01~02 | `Services/AuditLogger` | audit_logs | — | T-SEC-08~09 | 로그에 개인정보 없음 |
 | FR-OPS-01~03 | `bin/*.php`, `database/migrate.php` | job_locks, schema_migrations | — | T-OPS-01~03 | 동시 실행 시 1회만 처리 |
 
@@ -312,7 +327,8 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | M1 (P0-a) | 기반: 마이그레이션, 인증, 감사 로그, 수급자·직원·보호자 | M0 |
 | M2 (P0-b) | 일정·기록·업로드·태그 비교·규칙 버전 | M1 |
 | M3 (P0-c) | 계산 엔진, 업무·대시보드, Agent 공통 엔진, Daily Ops(규칙), Staff Compliance(규칙) | M2 + 본인부담 규칙 1건 이상 verified |
-| M4 (P1) | LLM 연동, Agent 2~5, 승인 워크플로, 문서 버전, 비용 관리 | M3 파일럿 1개월 안정 운영 |
+| M4 (P1) | Agent 2~5(규칙·템플릿 모드), 주간 상태변화기록, 승인 워크플로, 문서 버전 | M3 파일럿 1개월 안정 운영 |
+| (보류) | LLM 연동, 비용 관리, 상담 요약, Agent 3·4 LLM 모드 | Q-LEGAL-01 답변 |
 | M5 (P2) | 자연어 검색, 재무 분석, 방문목욕 등 | P1 정확성 확인 |
 
 상세 작업 분해는 [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md).
@@ -323,8 +339,9 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 |---|---|---|
 | 운영 서버 환경 미확인 | 코드 비호환 | M0에서 확인. 확인 전 버전 의존 문법 사용 금지 |
 | 규정 해석 오류 | 잘못된 청구 안내 | 규칙 검증 상태 관리, 미검증 규칙은 확정에 사용 안 함 |
-| AI 환각 | 잘못된 문서 | 근거 링크 필수, 스키마 검증, 사람 승인 |
+| AI 환각 | 잘못된 문서 | 현재 범위에서는 LLM 미사용. 재개 시 근거 링크 필수, 스키마 검증, 사람 승인 |
 | 개인정보 유출 | 법적 책임 | 가명처리, 최소 전송, 암호화, 접근 통제 |
 | 공단 파일 형식 변경 | 가져오기 실패 | 열 매핑 템플릿을 데이터로 관리, 형식 검사 실패 시 중단 |
 | 1인 운영자의 백업 누락 | 데이터 손실 | 자동 백업 cron + 백업 실패 알림 |
-| 공유호스팅에서 cron 불가 | 자동화 불가 | 대시보드 접속 시 지연 실행(fallback) 설계 |
+| 양식집이 공식 서식과 다를 가능성 | 필수 항목 누락 | 양식집 기반 규칙은 operational로 두고, 공식 필수 항목은 확인 후 regulatory로 별도 등록 |
+| LLM 없이 문서 초안 품질 부족 | 시간 절감 효과 감소 | 관찰값을 선택형으로 구조화해 PHP 집계 품질 확보, 서술은 담당자가 보완 |

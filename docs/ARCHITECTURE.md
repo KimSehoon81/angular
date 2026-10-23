@@ -1,6 +1,6 @@
 # CareFlow Lite — 아키텍처
 
-- 문서 버전: 0.1 (초안) · 작성일: 2026-10-22
+- 문서 버전: 0.2 (초안) · 작성일: 2026-10-22 · 개정: 2026-10-23 (cron 가능 확인, 새 저장소, LLM 보류)
 - 전제: 저장소에 기존 코드가 없음 ([PRD §0](PRD.md)). 운영 서버 버전은 미확인이며, 잠정 기준은 PHP 8.1+, MySQL 8.0+ / MariaDB 10.6+.
 
 ## 1. 기술 스택
@@ -13,7 +13,7 @@
 | DB 접근 | PDO + Prepared Statements (`ATTR_EMULATE_PREPARES=false`) | SQL Injection 방어 |
 | Frontend | 서버 렌더링 PHP 템플릿 + 바닐라 JS + CSS | 빌드 도구 불필요 |
 | Background | Linux cron + PHP CLI (`bin/`) | 상시 프로세스 없음 |
-| AI | 외부 LLM HTTP API (cURL) | 필요 시에만 호출 |
+| AI | 외부 LLM HTTP API (cURL) | **보류** — 이번 범위에서 호출하지 않음 (`ai.enabled=false`) |
 | 테스트 | PHPUnit (Composer, dev 의존성) | 환경 비호환 시 자체 경량 러너 ([Q-ARCH-02](OPEN_QUESTIONS.md)) |
 | 엑셀 읽기 | 1안: PhpSpreadsheet / 2안: CSV만 지원 | [Q-ARCH-03](OPEN_QUESTIONS.md) |
 
@@ -61,7 +61,7 @@ public/index.php (Front Controller)
 │   ├── Services/           # 업무 로직, 트랜잭션 경계
 │   │   ├── Billing/        # CopaymentCalculator 등 결정론적 계산
 │   │   ├── Import/         # 업로드·파싱·매핑
-│   │   └── Ai/             # LlmClient, BudgetGuard, Redactor, PromptRegistry
+│   │   └── Ai/             # (보류) LlmClient, BudgetGuard, Redactor, PromptRegistry — 인터페이스만
 │   ├── Repositories/       # SQL은 여기에만
 │   ├── Models/             # 값 객체·DTO
 │   ├── Rules/              # 규칙 구현 클래스 + RuleRegistry
@@ -128,7 +128,7 @@ cron(매월 1일)    → bin/monthly_jobs.php  (상태변화 보고, 정산 준�
 cron(매일 02:00)  → bin/backup.sh
 ```
 
-cron을 쓸 수 없는 환경에서는 운영자가 대시보드에 접속할 때 `LazyJobTrigger`가 마지막 실행 시각을 보고 일일 작업을 큐에 넣는다(응답 후 처리, 처리 시간 제한).
+운영 서버에서 cron 사용이 가능함을 확인했다(2026-10-23). 따라서 cron을 유일한 예약 실행 방식으로 쓰고, 접속 시 지연 실행(LazyJobTrigger)은 만들지 않는다. 대시보드는 마지막 일일 작업 실행 시각을 표시하고, 26시간 이상 실행이 없으면 경고를 띄운다. 최소 주기는 [Q-ENV-10](OPEN_QUESTIONS.md).
 
 이벤트 기반 실행(일정 변경, 기록 저장 등)은 Service가 같은 트랜잭션 안에서 `agent_runs`에 행을 넣는 방식(아웃박스 패턴)으로 처리한다.
 
@@ -143,7 +143,11 @@ cron을 쓸 수 없는 환경에서는 운영자가 대시보드에 접속할 �
 - 급여 종류를 `service_type` 코드로 관리하고, 급여 종류별 규칙·계산기·서비스 기록 항목을 플러그인 형태 클래스로 등록한다 (`Rules/`, `Services/Billing/Calculators/`).
 - 새 급여 종류 추가 시 기존 테이블 구조는 바꾸지 않고 `service_type` 값과 규칙 데이터만 추가하는 것을 목표로 한다.
 
-## 9. 배포
+## 9. 저장소
+
+- 운영자가 새 저장소를 만든다(2026-10-23 결정). 현재 `angular` 저장소에는 설계 문서만 있고, 새 저장소가 생기면 `docs/`와 `CLAUDE.md`를 옮긴 뒤 애플리케이션 코드는 새 저장소에서만 작성한다.
+
+## 10. 배포
 
 - 1안: 서버에서 `git pull` + `php database/migrate.php` (SSH 가능 시)
 - 2안: 로컬 빌드 후 rsync/FTP, 마이그레이션은 관리자 화면의 보호된 실행 버튼(admin + 재인증)

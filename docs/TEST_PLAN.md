@@ -1,6 +1,6 @@
 # CareFlow Lite — 테스트 계획
 
-- 문서 버전: 0.1 (초안) · 작성일: 2026-10-22
+- 문서 버전: 0.2 (초안) · 작성일: 2026-10-22 · 개정: 2026-10-23 (서식 테스트 추가, LLM 테스트 보류)
 - 아직 코드가 없으므로 **실행된 테스트는 없다.** 아래는 구현 시 작성할 테스트 목록이다.
 
 ## 1. 도구와 환경
@@ -10,7 +10,7 @@
 | 프레임워크 | PHPUnit (운영 PHP 버전에 맞는 메이저 버전) |
 | 대안 | PHPUnit을 쓸 수 없으면 `tests/run.php` 경량 러너 (assert 함수 + 종료 코드) — [Q-ARCH-02](OPEN_QUESTIONS.md) |
 | DB 테스트 | 별도 테스트 DB, 테스트마다 트랜잭션 롤백 |
-| LLM | `FakeLlmClient` (정상, 잘못된 JSON, 타임아웃, 근거 없는 내용, 지연 응답 시나리오) — 테스트에서 실제 API 호출 금지 |
+| LLM | 현재 범위에서 LLM 미사용. 재개 시 `FakeLlmClient`로만 테스트, 실제 API 호출 금지 |
 | 시계 | `Clock` 인터페이스 주입, 날짜 고정 |
 | 데이터 | `tests/fixtures/` 합성 데이터만 (실제 수급자 정보 금지) |
 | 정적 분석 | `php -l` 전체, 가능하면 PHPStan level 5+ |
@@ -63,7 +63,20 @@
 | T-IMP-06 | 반영 후 롤백 | 관련 tag_records 제거, 감사 로그 |
 | T-IMP-07 | 인코딩(EUC-KR/CP949, UTF-8 BOM) | 정상 파싱 또는 명확한 오류 |
 
+### 3.2a 서식 (T-FORM) — [FORMS](FORMS.md)
+
+| ID | 시나리오 | 기대 결과 |
+|---|---|---|
+| T-FORM-01 | 4개 영역 모두 미완료 | `FORM.HOMECARE.REQUIRED` 경고 |
+| T-FORM-02 | 완료 체크인데 소요시간 0 | 경고 |
+| T-FORM-03 | 영역별 소요시간 합계 vs (종료−시작) 차이 > 설정값 | `FORM.HOMECARE.MINUTES_SUM` 경고 |
+| T-FORM-04 | 장기요양등급 코드가 목록 밖 | 저장 거부 |
+| T-FORM-05 | 1주일 일별 관찰값 → 주간 상태변화기록 자동 초안 | 점검 항목별 지표와 근거 record_id |
+| T-FORM-06 | `form_version`이 다른 과거 기록 | 이전 버전 구조로 해석 |
+
 ### 3.3 AI Agent (T-AGT)
+
+> LLM 관련 케이스(C-03~08, C-11, C-12)는 보류. 현재 범위는 C-01, 02, 09, 10, 13과 Agent별 규칙·템플릿 모드 케이스.
 
 | ID | 시나리오 | 기대 결과 |
 |---|---|---|
@@ -79,10 +92,11 @@
 | T-AGT-C-10 | running 상태 고아 실행 | STALE 처리 |
 | T-AGT-C-11 | 입력 텍스트에 "이전 지시 무시" 같은 지시문 | 출력 스키마·제약 유지 |
 | T-AGT-C-12 | AI finding이 severity=error | 스키마 검증에서 거부 |
+| T-AGT-C-13 | `ai.enabled=false` 상태에서 전체 Agent 실행 | LLM 호출 0회, 규칙·템플릿 결과 정상 |
 | T-AGT-01-01~04 | Daily Ops | [AGENT_SPEC](AGENT_SPEC.md) 참조 |
 | T-AGT-02-01~05 | Claim Validation | 〃 |
-| T-AGT-03-01~04 | Care Plan (입력 충분/부족/근거 없는 진단/재승인) | 〃 |
-| T-AGT-04-01~03 | Condition Report | 〃 |
+| T-AGT-03-01~04 | Care Plan 템플릿 모드 (입력 충분/부족/매핑 안 된 항목/재승인) | 〃 |
+| T-AGT-04-01~05 | Condition Report 템플릿 모드 | 〃 |
 | T-AGT-05-01~03 | Billing & Copayment | 〃 |
 | T-AGT-06-01~03 | Staff & Compliance | 〃 |
 

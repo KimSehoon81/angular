@@ -6,10 +6,14 @@ APM(Apache + PHP + MySQL/MariaDB) 기반 재가방문센터 ERP + AI Agent 업�
 
 - 설계 문서 단계. `docs/IMPLEMENTATION_PLAN.md`가 승인되기 전에는 애플리케이션 코드를 작성하지 않는다.
 - 운영 서버의 PHP·DB 버전은 미확인(`docs/OPEN_QUESTIONS.md` Q-ENV-*). 확인 전까지 버전 의존 문법 사용 금지.
+- 이 저장소(`angular`)에는 설계 문서만 둔다. 코드는 운영자가 만들 새 저장소에서 작성한다.
+- cron 사용 가능. 예약 실행은 cron만 쓴다.
+- **외부 LLM 호출은 보류**(개인정보 전송 검토 전). Agent는 규칙·템플릿 모드만 구현하고 `ai.enabled`는 false로 둔다.
+- 서비스 기록·상태변화기록 구조는 `docs/FORMS.md`(운영자 제공 양식집 기반)를 따른다.
 
 ## 문서
 
-`docs/PRD.md`(요구사항·추적표) · `ARCHITECTURE.md` · `DATA_MODEL.md` · `API_SPEC.md` · `AGENT_SPEC.md` · `RULE_ENGINE_SPEC.md` · `SECURITY.md` · `TEST_PLAN.md` · `OPEN_QUESTIONS.md` · `IMPLEMENTATION_PLAN.md`
+`docs/PRD.md`(요구사항·추적표) · `FORMS.md` · `ARCHITECTURE.md` · `DATA_MODEL.md` · `API_SPEC.md` · `AGENT_SPEC.md` · `RULE_ENGINE_SPEC.md` · `SECURITY.md` · `TEST_PLAN.md` · `OPEN_QUESTIONS.md` · `IMPLEMENTATION_PLAN.md`
 
 ## 반드시 지킬 것
 

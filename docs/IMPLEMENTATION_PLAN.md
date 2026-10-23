@@ -1,6 +1,6 @@
 # CareFlow Lite — 구현 계획 (4단계, 승인 대기)
 
-- 문서 버전: 0.1 (초안) · 작성일: 2026-10-22
+- 문서 버전: 0.2 (초안) · 작성일: 2026-10-22 · 개정: 2026-10-23
 - **이 계획은 승인 전이다. 승인 전에는 코드를 작성하지 않는다.**
 - 각 작업은 하나의 브랜치·PR 단위로 작게 진행하고, DB 변경은 마이그레이션으로만 한다.
 - 완료 기준 공통: 관련 테스트를 실제로 실행해 통과 출력 첨부, `php -l` 통과, [보안 체크리스트](SECURITY.md#14-보안-점검-체크리스트-구현-각-단계-완료-시) 확인, 문서 갱신.
@@ -9,9 +9,10 @@
 
 | 항목 | 내용 |
 |---|---|
-| 범위 | [OPEN_QUESTIONS](OPEN_QUESTIONS.md)의 Q-ENV-01~06, Q-ARCH-01~03, Q-BIZ-01, Q-BIZ-03 답변 수집 |
-| 산출물 | 문서 갱신, 잠정 버전 기준 확정 |
-| 완료 기준 | Blocker(M1) 질문 모두 답변 |
+| 범위 | [OPEN_QUESTIONS](OPEN_QUESTIONS.md)의 Q-ENV-01~04, 09, Q-ARCH-01~03, Q-BIZ-01, 03, 10, 11 답변 수집 |
+| 진행 상황 (2026-10-23) | 답변 완료: cron 가능(Q-ENV-06), 새 저장소(Q-ENV-05), 서식 양식집(→ FORMS.md), LLM 전송 검토 보류(Q-LEGAL-01). **남은 Blocker**: PHP·DB 버전(Q-ENV-01·02), 서버 형태(Q-ENV-03), 새 저장소 생성·연결(Q-ENV-09), 태그 파일 샘플(Q-BIZ-01, W6에만 필요) |
+| 산출물 | 문서 갱신, 잠정 버전 기준 확정, 새 저장소로 문서 이전 |
+| 완료 기준 | Blocker(M1) 질문 모두 답변, 새 저장소 준비 |
 
 ## P0 작업
 
@@ -52,12 +53,12 @@
 
 | 항목 | 내용 |
 |---|---|
-| 범위 | 일정(반복 포함), 충돌 탐지, 기록 입력(모바일), 정정·삭제 요청(승인 테이블 최소 구현) |
-| 변경 파일 | `ScheduleService`, `ServiceRecordService`, `Rules/ScheduleConflictRule.php`, `Workflows/ApprovalWorkflow.php`(기본) |
+| 범위 | 일정(반복 포함), 충돌 탐지, 방문요양 급여제공기록지 입력(4개 영역 + 상태 관찰 4개 항목, [FORMS](FORMS.md)), 기록지 필수 항목 검사, 정정·삭제 요청(승인 테이블 최소 구현) |
+| 변경 파일 | `ScheduleService`, `ServiceRecordService`, `Rules/ScheduleConflictRule.php`, `Rules/HomecareFormRule.php`, `Workflows/ApprovalWorkflow.php`(기본) |
 | DB 변경 | service_schedules, service_records, record_revisions, agent_approvals |
 | 위험 | 자정 넘는 방문, 분할 방문 정책 미확정(Q-BIZ-03) |
-| 테스트 | T-REC-06~10, T-APPR-04 |
-| 완료 기준 | 기록 직접 수정 불가, 정정 승인 후 이력 확인 |
+| 테스트 | T-REC-06~10, T-APPR-04, T-FORM-01~04, 06 |
+| 완료 기준 | 기록 직접 수정 불가, 정정 승인 후 이력 확인, 모바일에서 기록지 입력 3분 이내(운영자 확인) |
 
 ### W5. 규칙 엔진 + 규칙 버전 관리
 
@@ -99,7 +100,7 @@
 | 범위 | AgentRunner, AgentInterface, PermissionGate, 큐 worker, cron 스크립트, 2개 Agent(LLM 없음), 대시보드 9개 위젯, 업무 목록, deadlines, 알림(in-app) |
 | 변경 파일 | `app/Agents/*`, `bin/*.php`, `app/Controllers/DashboardController.php` |
 | DB 변경 | agent_runs, agent_findings, deadlines, notifications |
-| 위험 | cron 불가 환경 → LazyJobTrigger |
+| 위험 | cron 주기 제한(Q-ENV-10) → worker 1회 실행 시간 조정 |
 | 테스트 | T-AGT-C-01, 09, 10, T-AGT-01-*, T-AGT-06-*, T-OPS-01, T-UI-01~03 |
 | 완료 기준 | 아침 브리핑이 LLM 없이 생성, 중복 실행 시 업무 중복 없음 |
 
@@ -115,16 +116,24 @@
 
 ## P1 작업 (P0 파일럿 1개월 안정 후 착수, 상세 계획은 그때 재제출)
 
+모두 LLM 없이 규칙·템플릿 모드로 구현한다.
+
 | 작업 | 범위 | 선행 조건 |
 |---|---|---|
-| W10 | LlmClient, Redactor, BudgetGuard, PromptRegistry, ai_runs, 비용 대시보드 | Q-LEGAL-01, Q-ARCH-04 |
 | W11 | 승인 워크플로 완성, 문서·버전 관리, 승인 화면(diff) | W4 |
 | W12 | Claim Validation Agent | W5, W6 |
-| W13 | Care Plan Agent | W10, W11, Q-REG-07 |
-| W14 | Condition Report Agent | W10, W11, Q-REG-08 |
-| W15 | Billing & Copayment Agent, 안내 문구 초안, 발송 승인 | W7, W11, Q-OPS-03 |
-| W16 | 상담 요약 | W10 |
+| W13 | Care Plan Agent (템플릿 모드) | W11, Q-REG-07 (계획서 양식) |
+| W14 | 주간 상태변화기록 + Condition Report Agent (템플릿 모드, PHP 집계) | W4, W11, Q-BIZ-11 |
+| W15 | Billing & Copayment Agent, 안내 문구 템플릿, 발송 승인 | W7, W11, Q-OPS-03 |
+
+## 보류 (Q-LEGAL-01 답변 후 별도 계획)
+
+| 작업 | 범위 |
+|---|---|
+| W10 | LlmClient, Redactor, BudgetGuard, PromptRegistry, ai_runs, 비용 대시보드 |
+| W16 | 상담 요약 |
+| W17 | Agent 3·4 LLM 모드, 예외 설명 문장 생성 |
 
 ## P2
 
-자연어 업무 검색, 운영 지표·재무, 규정 변경 검토 보조, 직원 배정 보조, 방문목욕 모듈 — P1 정확성 확인 후 별도 계획.
+운영 지표·재무, 직원 배정 보조, 방문목욕·방문간호 모듈([FORMS §3](FORMS.md)) — P1 정확성 확인 후 별도 계획. 자연어 업무 검색·규정 변경 검토 보조는 LLM이 필요하므로 보류 항목과 함께 검토.

@@ -1,6 +1,6 @@
 # CareFlow Lite — 규칙 엔진 명세
 
-- 문서 버전: 0.1 (초안) · 작성일: 2026-10-22
+- 문서 버전: 0.2 (초안) · 작성일: 2026-10-22 · 개정: 2026-10-23 (서식 규칙 추가)
 - 원칙: **AI가 장기요양 규정을 안다고 가정하지 않는다.** 규정에 근거한 판정은 공식 출처를 확인해 등록한 규칙으로만 한다.
 
 ## 1. 구성
@@ -86,6 +86,10 @@ draft ──(근거 일부 입력)──► unverified ──(근거 전체 + �
 | `STAFF.CREDENTIAL_EXPIRY` | operational | 만료일 D-N 알림 | 내부 정책 |
 | `STAFF.REQUIRED_DOCS` | regulatory | 직원 필수 서류 목록 | **미확인** |
 | `STAFF.TRAINING_DUE` | regulatory | 필수 교육 종류·주기 | **미확인** |
+| `FORM.HOMECARE.REQUIRED` | operational | 급여제공기록지 필수 항목 누락, 완료 영역 0개, 완료인데 소요시간 0 ([FORMS §1.3](FORMS.md)) | 센터 양식 기준 |
+| `FORM.HOMECARE.MINUTES_SUM` | operational | 영역별 소요시간 합 vs 방문 시간 차이 > 설정값 (법정 인정 시간 판정 아님) | 센터 양식 기준 |
+| `REPORT.WEEKLY_MISSING` | operational | 주간 상태변화기록 누락 주 (주간 작성 여부는 Q-BIZ-11) | 센터 정책 |
+| `CONDITION.CHANGE_THRESHOLD` | operational | 월간 지표 변화 판정 임계값 (예: 식사량 감소 기록 횟수 증가폭). 의학적 기준 아님 | 센터 정책 |
 | `CLIENT.GRADE_VALIDITY` | integrity | 인정 유효기간 밖 일정 | 내부 정의 (유효기간 데이터 기준) |
 | `DOC.REQUIRED_MISSING` | regulatory | 계약서·계획서 등 필수 서류 존재 | **미확인** |
 | `CAREPLAN.FORM_FIELDS` | regulatory | 급여제공계획서 필수 항목 | **미확인** (공식 양식 필요) |
