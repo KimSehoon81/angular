@@ -1,9 +1,9 @@
 # CareFlow Lite — 제품 요구사항 정의서 (PRD)
 
-- 문서 버전: 0.3 (초안)
-- 작성일: 2026-10-22 · 개정: 2026-10-23 (운영자 답변 반영, 기록 입력 전략 추가)
+- 문서 버전: 0.4 (초안)
+- 작성일: 2026-10-22 · 개정: 2026-10-23 (운영자 답변 반영, 기록 입력 전략, 공단 제출 프로그램 연계 추가)
 - 상태: **검토 대기** — 구현 착수 전 운영자 승인 필요
-- 관련 문서: [ARCHITECTURE](ARCHITECTURE.md) · [DATA_MODEL](DATA_MODEL.md) · [API_SPEC](API_SPEC.md) · [AGENT_SPEC](AGENT_SPEC.md) · [RULE_ENGINE_SPEC](RULE_ENGINE_SPEC.md) · [SECURITY](SECURITY.md) · [TEST_PLAN](TEST_PLAN.md) · [OPEN_QUESTIONS](OPEN_QUESTIONS.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) · [FORMS](FORMS.md) · [DATA_ENTRY](DATA_ENTRY.md)
+- 관련 문서: [ARCHITECTURE](ARCHITECTURE.md) · [DATA_MODEL](DATA_MODEL.md) · [API_SPEC](API_SPEC.md) · [AGENT_SPEC](AGENT_SPEC.md) · [RULE_ENGINE_SPEC](RULE_ENGINE_SPEC.md) · [SECURITY](SECURITY.md) · [TEST_PLAN](TEST_PLAN.md) · [OPEN_QUESTIONS](OPEN_QUESTIONS.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) · [FORMS](FORMS.md) · [DATA_ENTRY](DATA_ENTRY.md) · [INTEGRATION](INTEGRATION.md)
 
 ---
 
@@ -33,6 +33,13 @@
 - 우선순위: ① 공단 앱 기록과의 이중 입력 제거(가져오기) ② 요양보호사 모바일 직접 입력 ③ 종이 유지 시 사전 인쇄 시트 + 사복용 빠른 입력 ④ 종이 원본 스캔 첨부 ⑤ (보류) 자동 판독. 상세는 [DATA_ENTRY](DATA_ENTRY.md).
 - 공단 모바일 앱·전자태그를 통한 기록 전송이 운영 중일 수 있다는 공개 자료를 확인했으나 **현재 센터의 실제 방식과 전자 기록·서명 인정 요건은 미확인**이다. 이 때문에 종이를 없애는 결정은 하지 않고, 종이·전자 둘 다 받는 구조로 설계한다 ([Q-BIZ-10, 12, 13, Q-REG-12](OPEN_QUESTIONS.md)).
 - "사복이 옮겨 적는 것이 기존의 일반적인 방식인가"는 공식 자료로 확인하지 못했다. 센터마다 다를 수 있으므로 운영자에게 확인한다.
+
+### 0.3 제품 포지셔닝: 공단 제출 프로그램과 함께 쓰는 운영 최적화 도구 (2026-10-23)
+
+- 센터는 공단 제출·보고용 프로그램(운영자가 언급한 '요양사랑' 등)을 계속 사용한다. **CareFlow는 그 프로그램을 대체하지 않는다.** 공식 청구서 작성·제출은 제출 프로그램에서 사람이 한다.
+- CareFlow의 가치는 제출 **앞뒤**에 있다: 제출 전 점검(일정↔기록↔태그↔제출 파일 대조), 월 마감·통보 업무 관리, 제출 후 결과 대사와 수납, 입력 부담 축소, 문서 초안.
+- "요양사랑"의 기능·파일 형식은 공개 자료로 확인하지 못했다. 운영자 매뉴얼·화면·샘플 파일을 받아 `제출 업무 맵`과 연계 프로필을 만든다 ([INTEGRATION §8](INTEGRATION.md)). 그 전에는 파일 형식을 가정하지 않는다.
+- 연계 방식은 동반(A)·병행(C)으로 시작하고, 제출 프로그램의 가져오기 사양이 확인되면 원본 전환(B)을 검토한다 ([INTEGRATION §5](INTEGRATION.md)).
 
 **결론**: 기존 코드가 없어서 삭제·교체 위험은 없다. 대신 운영 환경을 확인하지 않았으므로 PHP 버전에 의존하는 기능(enum, readonly 속성 등)은 환경 확인 전까지 확정하지 않는다. 설계는 **PHP 8.1 이상, MySQL 8.0 / MariaDB 10.6 이상**을 잠정 기준으로 하며, 이 기준은 [Q-ENV-01~04](OPEN_QUESTIONS.md)가 답변되면 확정한다.
 
@@ -79,6 +86,7 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 - 상시 실행되는 AI 서버, Node.js/Python 백엔드, 메시지 브로커
 - 다중 센터(멀티 테넌트) 운영 — 확장 여지만 남긴다
 - **외부 LLM API 호출** — 개인정보 전송 검토 전까지 보류 (§0.1)
+- 공단 제출 프로그램의 기능 복제(공식 청구서 생성·전송), 공단 시스템 자동 연동 ([INTEGRATION §11](INTEGRATION.md))
 - 급여(인건비) 계산·4대보험 신고
 
 ## 4. 사용자
@@ -173,6 +181,25 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-ENT-09 | 공단에서 내려받은 기록 파일 가져오기로 이중 입력 제거 (파일 형식 확인 후, [Q-BIZ-12](OPEN_QUESTIONS.md)) | P0 |
 | FR-ENT-10 | 입력 시간 측정(건당)·입력 대기 지연 지표 표시 | P1 |
 | FR-ENT-11 | 체크박스 판독(OMR) / 서버 내 OCR / AI 읽기 | **보류** |
+
+### 6.3b 제출 프로그램 연계 (INT) — [INTEGRATION](INTEGRATION.md)
+
+| ID | 요구사항 | 우선순위 |
+|---|---|---|
+| FR-INT-01 | 제출 프로그램 등록(이름·버전·연계 방식 A/B/C) | P0 |
+| FR-INT-02 | 제출 업무 맵: 월/수시 제출·통보 업무, 기한(설정값+근거), 담당, 상태 | P0 |
+| FR-INT-03 | 샘플 검증된 가져오기 프로필로 제출 프로그램/공단 파일 가져오기 | P0 |
+| FR-INT-04 | 가져온 데이터와 일정·기록·태그 대조 → `billing_checks` | P0 |
+| FR-INT-05 | 제출 전 최종 점검 리포트 (제출 가능 여부를 판정하지 않음) | P0 |
+| FR-INT-06 | 사람이 제출한 사실·제출본 파일 기록 (CareFlow는 제출하지 않음) | P0 |
+| FR-INT-07 | 제출 후 결과 대사, 반려·조정 건 업무화 | P1 |
+| FR-INT-08 | 지급/수납 결과를 수납 기록 초안으로 제안 | P1 |
+| FR-INT-09 | 이중 입력 감지(출처 비교, 병합은 사람) | P0 |
+| FR-INT-10 | 파일 구조 변경 감지 시 가져오기 중단 + 알림 | P0 |
+| FR-INT-11 | 통보 필요 이벤트 감지 → 업무 (대상·기한은 근거 확인 후) | P1 |
+| FR-INT-12 | 월 제출 진행 화면 | P1 |
+| FR-INT-13 | 내보내기 프로필(B 방식), 가져오기 사양 확인 후 | 조건부 |
+| FR-INT-14 | 공식 API 연동 | **보류** |
 
 ### 6.4 외부 자료 가져오기 (IMP)
 
@@ -325,6 +352,11 @@ LLM 기능 보류(§0.1)에 따라 아래 요구사항도 보류한다. LLM 기�
 | FR-ENT-06, 08, 10 | `Services/EntryQueueService`, `Rules/EntryLateRule` | service_records, service_schedules | Agent 1 | T-ENT-11~13 | 입력 대기 목록·출처 표시 |
 | FR-ENT-07 | `Services/AttachmentService` | files | — | T-ENT-14 | 웹 루트 밖 저장, 권한 확인 |
 | FR-ENT-09 | `Services/Import/*` | import_files, tag_import_batches | 검증 엔진 | T-IMP-* | 재입력 없이 반영 |
+| FR-INT-01~02 | `Services/Integration/ProgramService`, `SubmissionTaskService` | external_programs, submission_tasks | — | T-INT-01~03 | 기한·근거 표시 |
+| FR-INT-03~04, 09~10 | `Services/Integration/ImportProfile*`, `Rules/Integration/*` | integration_profiles, import_files, billing_checks | 검증 엔진 | T-INT-04~10 | 샘플 검증 전 활성 불가, 구조 변경 시 중단 |
+| FR-INT-05~06 | `Services/Integration/PreflightService`, `SubmissionLogService` | submission_logs, billing_checks | Agent 2 | T-INT-11~14 | 판정 아닌 점검, 제출본 수정 불가 |
+| FR-INT-07~08 | `Services/Integration/ReconciliationService` | reconciliations, payment_records | 검증 엔진 | T-INT-15~17 | 차이 목록·업무화 |
+| FR-INT-11~12 | `Services/Integration/NoticeEventService` | submission_tasks, tasks | Agent 1·6 | T-INT-18~19 | 근거 없으면 '확인 필요' |
 | FR-SVC-05 | `Rules/MissingRecordRule` | service_schedules, service_records, billing_checks | 검증 엔진 | T-REC-02 | "기록 없음" 표시, 미제공 단정 없음 |
 | FR-IMP-01~06 | `Services/Import/*`, `Validators/UploadValidator` | tag_import_batches, tag_records, import_files | 검증 엔진 | T-IMP-01~07 | 동일 해시 차단, 배치 롤백 |
 | FR-RULE-01~03,06 | `Rules/RuleRegistry`, `Services/RuleVersionService` | rule_versions, rule_test_cases | 규칙 엔진 | T-RULE-01~06 | 미검증 규칙 확정 사용 불가 |
@@ -372,6 +404,9 @@ LLM 기능 보류(§0.1)에 따라 아래 요구사항도 보류한다. LLM 기�
 | 공단 파일 형식 변경 | 가져오기 실패 | 열 매핑 템플릿을 데이터로 관리, 형식 검사 실패 시 중단 |
 | 1인 운영자의 백업 누락 | 데이터 손실 | 자동 백업 cron + 백업 실패 알림 |
 | 양식집이 공식 서식과 다를 가능성 | 필수 항목 누락 | 양식집 기반 규칙은 operational로 두고, 공식 필수 항목은 확인 후 regulatory로 별도 등록 |
+| 제출 프로그램의 파일 형식을 모르고 가정함 | 잘못된 가져오기·대조 | 샘플 검증 전 프로필 비활성, 구조 변경 감지 |
+| 제출 프로그램 업데이트로 형식 변경 | 연계 중단 | 프로필 버전 관리, 이상 시 중단·알림 |
+| 제출 프로그램 약관이 데이터 연계를 제한 | 연계 불가 | 운영자 약관 확인 ([Q-INT-05](OPEN_QUESTIONS.md)) |
 | 사복 옮겨 적기 부담이 계속 남음 | 입력 업무 누적, 기록 지연 | 이중 입력 제거 → 모바일 직접 입력 → 사전 인쇄 시트 순으로 단계 적용, 입력 시간 측정 |
 | 공단 앱과 CareFlow 이중 입력 | 낭비·불일치 | 가져오기 우선(E0), 센터의 실제 전송 방식 확인 |
 | 복사 입력으로 기록의 신뢰성 저하 | 청구·평가 위험 | 제안 방식, 항목별 확인, 반복 내용 경고 |

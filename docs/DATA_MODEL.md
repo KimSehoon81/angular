@@ -256,6 +256,18 @@ UNIQUE(client_id, period_ym, calc_version). 확정(approved) 행은 수정 불�
 | reviewed_by, reviewed_at, review_note | |
 | fingerprint CHAR(64) UNIQUE | 같은 문제 중복 생성 방지 |
 
+### 3.3a 제출 프로그램 연계 — [INTEGRATION](INTEGRATION.md)
+
+**external_programs** — id, name, vendor, version, scope(사용 업무 범위), link_mode(A/B/C), terms_checked(TINYINT), notes. 계정·인증서·비밀번호는 저장하지 않는다.
+
+**integration_profiles** — id, program_id FK, kind(import/export), name, column_map JSON, required_columns JSON, encoding, version, sample_file_sha256, verified_by, verified_at, status(draft/verified/deprecated). `verified` 전에는 가져오기 실행 불가. `import_templates`(태그 파일용)와 같은 구조를 공유할 수 있다.
+
+**submission_tasks** — id, program_id, task_type(claim/record_transmit/contract_notice/staff_notice/org_info/other), title, period_ym, due_date, due_basis(source, checked_at; NULL이면 센터 내부 목표일), program_menu_note, assignee_id, status(pending/preflight_done/submitted/confirmed). UNIQUE(task_type, period_ym).
+
+**submission_logs** — id, task_id, submitted_on, submitted_by, period_from, period_to, file_id FK(제출본, 수정 불가), file_sha256, preflight_snapshot JSON(제출 당시 점검 결과 요약), note. 추가 전용.
+
+**reconciliations** — id, task_id/period_ym, source_file_id, summary JSON, status(open/reviewed), reviewed_by, reviewed_at. 항목별 차이는 `billing_checks`(`source=reconciliation`)에 저장.
+
 ### 3.4 재무
 
 **payment_records** — id, client_id, period_ym, billed_amount, received_amount, received_at, method, note. 미수금 = 청구 − 수납 (조회 시 계산, 저장하지 않음).

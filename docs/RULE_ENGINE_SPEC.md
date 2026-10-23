@@ -86,6 +86,11 @@ draft ──(근거 일부 입력)──► unverified ──(근거 전체 + �
 | `STAFF.CREDENTIAL_EXPIRY` | operational | 만료일 D-N 알림 | 내부 정책 |
 | `STAFF.REQUIRED_DOCS` | regulatory | 직원 필수 서류 목록 | **미확인** |
 | `STAFF.TRAINING_DUE` | regulatory | 필수 교육 종류·주기 | **미확인** |
+| `INT.RECORD_MISSING_IN_PROGRAM` / `INT.RECORD_MISSING_IN_CAREFLOW` | integrity | 제출 프로그램 파일과 CareFlow 간 방문 기록 누락 ([INTEGRATION §9](INTEGRATION.md)) | 내부 정의 |
+| `INT.TIME_MISMATCH` / `INT.COUNT_SUM_MISMATCH` | operational | 같은 방문의 시각·월 합계 차이 (허용 오차는 설정값) | 센터 정책 |
+| `INT.AMOUNT_MISMATCH` | integrity | 제출액·계산액·결과액 차이. 계산액은 verified 규칙이 있을 때만 비교 | 내부 정의 |
+| `INT.PROFILE_DRIFT` | integrity | 가져온 파일 구조가 프로필과 다름 → 중단 | 내부 정의 |
+| `SUBMIT.PREFLIGHT_OPEN_ERRORS` / `SUBMIT.CYCLE_DUE` | operational | 제출 전 미해결 오류, 제출·통보 기한 임박 (기한은 설정값, 공식 기한은 근거 확인 후) | 센터 정책 |
 | `REC.ENTRY_LATE` | operational | 방문일과 입력일 차이 > 설정 일수 (법정 기한 아님, [DATA_ENTRY §5](DATA_ENTRY.md)) | 센터 정책 |
 | `REC.REPEATED_CONTENT` | operational | 같은 수급자의 연속 방문 기록 내용이 동일. 판정이 아니라 확인 요청 | 센터 정책 |
 | `REC.SOURCE_CONFLICT` | integrity | 같은 방문에 입력 출처가 다른 기록이 2건 이상 | 내부 정의 |

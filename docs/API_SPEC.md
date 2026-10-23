@@ -100,6 +100,20 @@
 | POST | `/imports/{batch_id}/rollback` | A | 배치 되돌리기 |
 | GET/POST | `/import-templates` | A | 열 매핑 템플릿 |
 
+### 3.5a 제출 프로그램 연계
+
+| 메서드 | 경로 | 권한 | 설명 |
+|---|---|---|---|
+| GET/POST | `/integration/programs` | A | 제출 프로그램 등록 |
+| GET/POST | `/integration/profiles` | A | 가져오기/내보내기 프로필. `verify`는 샘플 해시 입력 필요 |
+| GET/POST/PATCH | `/submission-tasks?period_ym` | A,S | 제출 업무 맵, 기한·상태 |
+| POST | `/integration/imports` | A | 프로필 선택 후 파일 업로드 → 구조 검사 → 미리보기 |
+| POST | `/integration/imports/{id}/apply` | A | 반영 (구조 변경 시 409 PROFILE_DRIFT) |
+| POST | `/submission-tasks/{id}/preflight` | A,S | 제출 전 점검 실행 (202) |
+| GET | `/submission-tasks/{id}/preflight/report` | A,S | 점검 리포트 (판정 문구 없음) |
+| POST | `/submission-tasks/{id}/log` | A | 제출 기록 + 제출본 업로드 (사람이 제출한 뒤) |
+| POST | `/integration/reconciliations` | A | 결과 파일 대사 |
+
 ### 3.6 검증·규칙
 
 | 메서드 | 경로 | 권한 | 설명 |
