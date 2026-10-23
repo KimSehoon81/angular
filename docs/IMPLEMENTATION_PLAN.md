@@ -9,7 +9,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 범위 | [OPEN_QUESTIONS](OPEN_QUESTIONS.md)의 Q-ENV-01~04, 09, Q-ARCH-01~03, Q-BIZ-01, 03, 10, 11 답변 수집 |
+| 범위 | [OPEN_QUESTIONS](OPEN_QUESTIONS.md)의 Q-ENV-01~04, 09, Q-ARCH-01~03, Q-BIZ-01, 03, 10~13, Q-REG-12 답변 수집 |
 | 진행 상황 (2026-10-23) | 답변 완료: cron 가능(Q-ENV-06), 새 저장소(Q-ENV-05), 서식 양식집(→ FORMS.md), LLM 전송 검토 보류(Q-LEGAL-01). **남은 Blocker**: PHP·DB 버전(Q-ENV-01·02), 서버 형태(Q-ENV-03), 새 저장소 생성·연결(Q-ENV-09), 태그 파일 샘플(Q-BIZ-01, W6에만 필요) |
 | 산출물 | 문서 갱신, 잠정 버전 기준 확정, 새 저장소로 문서 이전 |
 | 완료 기준 | Blocker(M1) 질문 모두 답변, 새 저장소 준비 |
@@ -59,6 +59,19 @@
 | 위험 | 자정 넘는 방문, 분할 방문 정책 미확정(Q-BIZ-03) |
 | 테스트 | T-REC-06~10, T-APPR-04, T-FORM-01~04, 06 |
 | 완료 기준 | 기록 직접 수정 불가, 정정 승인 후 이력 확인, 모바일에서 기록지 입력 3분 이내(운영자 확인) |
+
+### W4b. 기록 입력 경로 (옮겨 적기 최소화) — [DATA_ENTRY](DATA_ENTRY.md)
+
+W4와 함께 또는 직후에 진행. **Q-BIZ-10 답변에 따라 범위를 조정한다** (예: 이미 공단 앱으로 전송 중이면 모바일 입력은 줄이고 W6 가져오기를 앞당긴다).
+
+| 항목 | 내용 |
+|---|---|
+| 범위 | 요양보호사 모바일 입력 화면(임시저장, 제안 방식 불러오기), 입력 대기 목록, 입력 출처·시각 저장, 입력 지연·반복 내용 규칙. 이후 단계: 사전 인쇄 시트, 사복용 빠른 입력 격자, 스캔 첨부 |
+| 변경 파일 | `Controllers/MobileRecordController.php`, `QuickEntryController.php`, `Services/{EntryQueue,RecordSheet,Phrase,Attachment}Service.php`, `Rules/EntryLateRule.php` |
+| DB 변경 | record_sheets, record_phrases, service_records 컬럼 추가 |
+| 위험 | 복사 입력으로 기록 신뢰성 저하 → 제안 방식·경고. 전자 서명 요건 미확인(Q-REG-12) → 종이 병행 유지. 모바일 통신 불안정 |
+| 테스트 | T-ENT-01~16 |
+| 완료 기준 | 운영자가 합성 데이터로 입력 시간을 측정해 기준값 확보, 입력 대기 목록이 종이 더미와 일치 |
 
 ### W5. 규칙 엔진 + 규칙 버전 관리
 

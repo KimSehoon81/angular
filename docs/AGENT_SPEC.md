@@ -162,7 +162,7 @@ Agent는 L0~L2에서만 동작한다. L3 이상은 Agent가 `agent_approvals`에
 | trigger | cron 매일 06:00 / 대시보드 열기(당일 결과 없거나 6시간 경과 시) / 일정 변경·기록 누락·신규 상담 이벤트 / 마감 임박 |
 | input_schema | `{ date: DATE }` + 읽기: 당일·전일 일정, 기록, 태그 매칭 결과, 열린 업무, deadlines, 자격 만료, 상담 후속일, 월말 정산 현황 |
 | permission_scope | L0(조회), L1(findings·tasks·notifications 생성) |
-| rule_checks | `SCHED.MISSING_RECORD`, `TAG.TIME_MISMATCH`, `TASK.OVERDUE`, `DEADLINE.UPCOMING`, `STAFF.CREDENTIAL_EXPIRY`, `CONSULT.FOLLOWUP_DUE`, `BILL.MONTH_END_READINESS` |
+| rule_checks | `SCHED.MISSING_RECORD`, `REC.ENTRY_LATE`, `TAG.TIME_MISMATCH`, `TASK.OVERDUE`, `DEADLINE.UPCOMING`, `STAFF.CREDENTIAL_EXPIRY`, `CONSULT.FOLLOWUP_DUE`, `BILL.MONTH_END_READINESS` |
 | llm_required | **아니오(P0)**. P1에서 선택: 브리핑 문장 다듬기 (집계 수치·우선순위는 규칙 결과 그대로) |
 | output_schema | 공통 출력 + `items[]`(type, priority, entity_id, message, action) |
 | approval_required | 아니오 (업무 생성만) |

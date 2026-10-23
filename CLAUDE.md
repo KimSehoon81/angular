@@ -10,10 +10,11 @@ APM(Apache + PHP + MySQL/MariaDB) 기반 재가방문센터 ERP + AI Agent 업�
 - cron 사용 가능. 예약 실행은 cron만 쓴다.
 - **외부 LLM 호출은 보류**(개인정보 전송 검토 전). Agent는 규칙·템플릿 모드만 구현하고 `ai.enabled`는 false로 둔다.
 - 서비스 기록·상태변화기록 구조는 `docs/FORMS.md`(운영자 제공 양식집 기반)를 따른다.
+- 기록 입력은 `docs/DATA_ENTRY.md`의 단계(이중 입력 제거 → 모바일 직접 입력 → 사전 인쇄 시트·빠른 입력)를 따른다. 종이·전자 둘 다 받는 구조로 설계하고, 전자 서명·원본 보관 요건 확인 전에는 종이를 없애지 않는다. 지난 방문 값은 제안으로만 제공하고 자동 확정하지 않는다.
 
 ## 문서
 
-`docs/PRD.md`(요구사항·추적표) · `FORMS.md` · `ARCHITECTURE.md` · `DATA_MODEL.md` · `API_SPEC.md` · `AGENT_SPEC.md` · `RULE_ENGINE_SPEC.md` · `SECURITY.md` · `TEST_PLAN.md` · `OPEN_QUESTIONS.md` · `IMPLEMENTATION_PLAN.md`
+`docs/PRD.md`(요구사항·추적표) · `FORMS.md` · `DATA_ENTRY.md` · `ARCHITECTURE.md` · `DATA_MODEL.md` · `API_SPEC.md` · `AGENT_SPEC.md` · `RULE_ENGINE_SPEC.md` · `SECURITY.md` · `TEST_PLAN.md` · `OPEN_QUESTIONS.md` · `IMPLEMENTATION_PLAN.md`
 
 ## 반드시 지킬 것
 

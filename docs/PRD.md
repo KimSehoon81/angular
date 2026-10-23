@@ -1,9 +1,9 @@
 # CareFlow Lite — 제품 요구사항 정의서 (PRD)
 
-- 문서 버전: 0.2 (초안)
-- 작성일: 2026-10-22 · 개정: 2026-10-23 (운영자 답변 반영)
+- 문서 버전: 0.3 (초안)
+- 작성일: 2026-10-22 · 개정: 2026-10-23 (운영자 답변 반영, 기록 입력 전략 추가)
 - 상태: **검토 대기** — 구현 착수 전 운영자 승인 필요
-- 관련 문서: [ARCHITECTURE](ARCHITECTURE.md) · [DATA_MODEL](DATA_MODEL.md) · [API_SPEC](API_SPEC.md) · [AGENT_SPEC](AGENT_SPEC.md) · [RULE_ENGINE_SPEC](RULE_ENGINE_SPEC.md) · [SECURITY](SECURITY.md) · [TEST_PLAN](TEST_PLAN.md) · [OPEN_QUESTIONS](OPEN_QUESTIONS.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) · [FORMS](FORMS.md)
+- 관련 문서: [ARCHITECTURE](ARCHITECTURE.md) · [DATA_MODEL](DATA_MODEL.md) · [API_SPEC](API_SPEC.md) · [AGENT_SPEC](AGENT_SPEC.md) · [RULE_ENGINE_SPEC](RULE_ENGINE_SPEC.md) · [SECURITY](SECURITY.md) · [TEST_PLAN](TEST_PLAN.md) · [OPEN_QUESTIONS](OPEN_QUESTIONS.md) · [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md) · [FORMS](FORMS.md) · [DATA_ENTRY](DATA_ENTRY.md)
 
 ---
 
@@ -26,6 +26,13 @@
 
 - **외부 LLM 호출 기능은 이번 범위에서 제외한다.** 개인정보 전송 검토(Q-LEGAL-01)를 보류했기 때문이다. Agent는 모두 PHP 규칙·템플릿으로 동작하도록 설계하고, LLM 연동부(`LlmClient`, `Redactor`, 비용 관리)는 인터페이스 자리만 남긴다. 설정 `ai.enabled`의 기본값은 `false`이며, 보류가 풀리기 전에는 켤 수 없다.
 - 이 결정으로 Care Plan Agent의 자유 서술 초안, 상담 요약 같은 "자연어 생성" 기능은 보류되고, 구조화된 입력을 템플릿에 채우는 방식만 남는다.
+
+### 0.2 기록 입력 방식 결정 (2026-10-23)
+
+- 종이 기록지를 사복이 옮겨 적는 구조는 **입력 업무를 사람에게 쌓는다.** 이를 AI(사진 읽기)로 풀면 개인정보 외부 전송 문제로 보류 범위와 충돌한다. 따라서 **AI 없이 옮겨 적는 양부터 줄인다.**
+- 우선순위: ① 공단 앱 기록과의 이중 입력 제거(가져오기) ② 요양보호사 모바일 직접 입력 ③ 종이 유지 시 사전 인쇄 시트 + 사복용 빠른 입력 ④ 종이 원본 스캔 첨부 ⑤ (보류) 자동 판독. 상세는 [DATA_ENTRY](DATA_ENTRY.md).
+- 공단 모바일 앱·전자태그를 통한 기록 전송이 운영 중일 수 있다는 공개 자료를 확인했으나 **현재 센터의 실제 방식과 전자 기록·서명 인정 요건은 미확인**이다. 이 때문에 종이를 없애는 결정은 하지 않고, 종이·전자 둘 다 받는 구조로 설계한다 ([Q-BIZ-10, 12, 13, Q-REG-12](OPEN_QUESTIONS.md)).
+- "사복이 옮겨 적는 것이 기존의 일반적인 방식인가"는 공식 자료로 확인하지 못했다. 센터마다 다를 수 있으므로 운영자에게 확인한다.
 
 **결론**: 기존 코드가 없어서 삭제·교체 위험은 없다. 대신 운영 환경을 확인하지 않았으므로 PHP 버전에 의존하는 기능(enum, readonly 속성 등)은 환경 확인 전까지 확정하지 않는다. 설계는 **PHP 8.1 이상, MySQL 8.0 / MariaDB 10.6 이상**을 잠정 기준으로 하며, 이 기준은 [Q-ENV-01~04](OPEN_QUESTIONS.md)가 답변되면 확정한다.
 
@@ -150,6 +157,22 @@ CareFlow Lite는 데이터를 저장하는 데서 그치지 않는다. 업무 �
 | FR-SVC-04 | 서비스 기록 정정·삭제는 승인 요청을 거치고 변경 이력을 남김 | P0 |
 | FR-SVC-05 | 일정 대비 기록 누락 탐지 ("기록 없음"과 "미제공"을 구분) | P0 |
 | FR-SVC-06 | 모바일 반응형 기록 입력 화면 | P0 |
+
+### 6.3a 기록 입력 (ENTRY) — [DATA_ENTRY](DATA_ENTRY.md)
+
+| ID | 요구사항 | 우선순위 |
+|---|---|---|
+| FR-ENT-01 | 요양보호사 모바일 입력: 오늘 일정 자동 로드, 영역 토글·소요시간 버튼·선택형 관찰 입력, 자동 임시저장 | P0 |
+| FR-ENT-02 | "지난 방문 값 불러오기"는 제안으로만 제공, 항목별 확인 없이는 저장 불가. 일괄 자동 완료 금지 | P0 |
+| FR-ENT-03 | 서술란 상용구 등록·삽입, 휴대폰 기본 음성 입력 사용 (외부 AI 호출 없음) | P1 |
+| FR-ENT-04 | 사전 인쇄 시트: 일정에서 기록지 자동 생성(수급자·등급·기관기호·직원·예정 시간 채움), 무작위 시트 코드(QR, 개인정보 미포함), 화면과 동일한 배치 | P1 |
+| FR-ENT-05 | 사복용 빠른 입력: 수급자 1명 × 1주 격자, 키보드 이동, 시트 코드로 일정 자동 매칭, 저장 전 즉시 검사 | P1 |
+| FR-ENT-06 | 입력 대기 목록: 방문했으나 기록이 없는 건을 날짜순 표시 | P0 |
+| FR-ENT-07 | 종이 원본 스캔·사진 첨부 보관 (값 자동 판독 없음) | P1 |
+| FR-ENT-08 | 모든 기록에 입력 출처(`entry_source`)·입력자·입력 시각 저장, 출처가 다른 기록 간 불일치 경고 | P0 |
+| FR-ENT-09 | 공단에서 내려받은 기록 파일 가져오기로 이중 입력 제거 (파일 형식 확인 후, [Q-BIZ-12](OPEN_QUESTIONS.md)) | P0 |
+| FR-ENT-10 | 입력 시간 측정(건당)·입력 대기 지연 지표 표시 | P1 |
+| FR-ENT-11 | 체크박스 판독(OMR) / 서버 내 OCR / AI 읽기 | **보류** |
 
 ### 6.4 외부 자료 가져오기 (IMP)
 
@@ -276,7 +299,7 @@ LLM 기능 보류(§0.1)에 따라 아래 요구사항도 보류한다. LLM 기�
 | 시나리오 | 흐름 요약 | 관련 요구사항 |
 |---|---|---|
 | A. 신규 수급자 등록 | 등록 → 필수항목 검사 → 욕구사정 → 계획서 초안(템플릿) → 검토·승인 → 버전 저장 → 후속 업무 생성 | BASE-01~07, AGT-03, AGT-07, DOC-01 |
-| B. 매일 방문 관리 | 당일 일정 확인 → 일정·기록 비교 → 태그 검증 → 불일치 업무 등록 → 확인·정정(승인) → 이력 | SVC-*, IMP-*, RULE-04, AGT-01, AGT-02 |
+| B. 매일 방문 관리 | 당일 일정 확인 → 요양보호사 모바일 입력(또는 사복 빠른 입력) → 일정·기록 비교 → 태그 검증 → 불일치 업무 등록 → 확인·정정(승인) → 이력 | SVC-*, IMP-*, RULE-04, AGT-01, AGT-02 |
 | C. 월말 청구 준비 | 자료 수집 → 중복·누락·불일치 검사 → 규칙 점검 → 본인부담금 계산 → 오류·경고 표시 → 수정 → 재검증 → 승인 → 사람이 공식 시스템 제출 | AGT-02, AGT-05, BILL-*, APPR-01 |
 | D. 월별 상태변화 보고 | 일별 관찰값 → 주간 상태변화기록 → 월간 취합(PHP 집계) → 변화·근거 연결 → 근거 부족 표시 → 검토·확정 | SVC-08, AGT-04, DOC-* |
 | E. 매일 업무 브리핑 | 로그인 또는 아침 cron → 오늘 방문·누락·불일치·행정 업무·만료 예정·상담 후속·청구 전 항목·전날 미완료 | AGT-01, DASH-01 |
@@ -297,6 +320,11 @@ LLM 기능 보류(§0.1)에 따라 아래 요구사항도 보류한다. LLM 기�
 | FR-SVC-03~04 | `Services/ServiceRecordService` | service_records, record_revisions, agent_approvals | — | T-REC-10, T-APPR-04 | 정정 시 승인·이력 |
 | FR-SVC-07 | `Rules/HomecareFormRule` | service_records, billing_checks | 규칙 엔진 | T-FORM-01~04 | 누락 항목 경고 |
 | FR-SVC-08 | `Services/ConditionObservationService` | condition_observations | — | T-FORM-05~06 | 일별 관찰값으로 주간 초안 채움 |
+| FR-ENT-01~03 | `Controllers/MobileRecordController`, `Services/ServiceRecordService`, `Services/PhraseService` | service_records, record_phrases | — | T-ENT-01~05 | 확인 없이 저장 불가 |
+| FR-ENT-04~05 | `Services/RecordSheetService`, `Controllers/QuickEntryController` | record_sheets, service_records | 규칙 엔진 | T-ENT-06~10 | 시트 코드로 일정 자동 매칭 |
+| FR-ENT-06, 08, 10 | `Services/EntryQueueService`, `Rules/EntryLateRule` | service_records, service_schedules | Agent 1 | T-ENT-11~13 | 입력 대기 목록·출처 표시 |
+| FR-ENT-07 | `Services/AttachmentService` | files | — | T-ENT-14 | 웹 루트 밖 저장, 권한 확인 |
+| FR-ENT-09 | `Services/Import/*` | import_files, tag_import_batches | 검증 엔진 | T-IMP-* | 재입력 없이 반영 |
 | FR-SVC-05 | `Rules/MissingRecordRule` | service_schedules, service_records, billing_checks | 검증 엔진 | T-REC-02 | "기록 없음" 표시, 미제공 단정 없음 |
 | FR-IMP-01~06 | `Services/Import/*`, `Validators/UploadValidator` | tag_import_batches, tag_records, import_files | 검증 엔진 | T-IMP-01~07 | 동일 해시 차단, 배치 롤백 |
 | FR-RULE-01~03,06 | `Rules/RuleRegistry`, `Services/RuleVersionService` | rule_versions, rule_test_cases | 규칙 엔진 | T-RULE-01~06 | 미검증 규칙 확정 사용 불가 |
@@ -344,4 +372,7 @@ LLM 기능 보류(§0.1)에 따라 아래 요구사항도 보류한다. LLM 기�
 | 공단 파일 형식 변경 | 가져오기 실패 | 열 매핑 템플릿을 데이터로 관리, 형식 검사 실패 시 중단 |
 | 1인 운영자의 백업 누락 | 데이터 손실 | 자동 백업 cron + 백업 실패 알림 |
 | 양식집이 공식 서식과 다를 가능성 | 필수 항목 누락 | 양식집 기반 규칙은 operational로 두고, 공식 필수 항목은 확인 후 regulatory로 별도 등록 |
+| 사복 옮겨 적기 부담이 계속 남음 | 입력 업무 누적, 기록 지연 | 이중 입력 제거 → 모바일 직접 입력 → 사전 인쇄 시트 순으로 단계 적용, 입력 시간 측정 |
+| 공단 앱과 CareFlow 이중 입력 | 낭비·불일치 | 가져오기 우선(E0), 센터의 실제 전송 방식 확인 |
+| 복사 입력으로 기록의 신뢰성 저하 | 청구·평가 위험 | 제안 방식, 항목별 확인, 반복 내용 경고 |
 | LLM 없이 문서 초안 품질 부족 | 시간 절감 효과 감소 | 관찰값을 선택형으로 구조화해 PHP 집계 품질 확보, 서술은 담당자가 보완 |

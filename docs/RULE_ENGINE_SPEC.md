@@ -86,6 +86,9 @@ draft ──(근거 일부 입력)──► unverified ──(근거 전체 + �
 | `STAFF.CREDENTIAL_EXPIRY` | operational | 만료일 D-N 알림 | 내부 정책 |
 | `STAFF.REQUIRED_DOCS` | regulatory | 직원 필수 서류 목록 | **미확인** |
 | `STAFF.TRAINING_DUE` | regulatory | 필수 교육 종류·주기 | **미확인** |
+| `REC.ENTRY_LATE` | operational | 방문일과 입력일 차이 > 설정 일수 (법정 기한 아님, [DATA_ENTRY §5](DATA_ENTRY.md)) | 센터 정책 |
+| `REC.REPEATED_CONTENT` | operational | 같은 수급자의 연속 방문 기록 내용이 동일. 판정이 아니라 확인 요청 | 센터 정책 |
+| `REC.SOURCE_CONFLICT` | integrity | 같은 방문에 입력 출처가 다른 기록이 2건 이상 | 내부 정의 |
 | `FORM.HOMECARE.REQUIRED` | operational | 급여제공기록지 필수 항목 누락, 완료 영역 0개, 완료인데 소요시간 0 ([FORMS §1.3](FORMS.md)) | 센터 양식 기준 |
 | `FORM.HOMECARE.MINUTES_SUM` | operational | 영역별 소요시간 합 vs 방문 시간 차이 > 설정값 (법정 인정 시간 판정 아님) | 센터 양식 기준 |
 | `REPORT.WEEKLY_MISSING` | operational | 주간 상태변화기록 누락 주 (주간 작성 여부는 Q-BIZ-11) | 센터 정책 |

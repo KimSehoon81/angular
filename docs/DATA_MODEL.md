@@ -154,6 +154,11 @@ settings, job_locks, schema_migrations, login_attempts
 | content JSON | 4개 영역(신체활동·인지관리·일상생활·정서지원)별 완료 여부·소요시간·세부 항목 ([FORMS §1.2](FORMS.md)) |
 | observations JSON | 상태 관찰 4개 항목(신체·건강 / 식사·복약 / 인지·정서 / 배변) 선택형 값 ([FORMS §2](FORMS.md)) |
 | total_minutes | SMALLINT, 영역별 소요시간 합 (저장 시 PHP 계산) |
+| entry_source | VARCHAR(24): caregiver_mobile / staff_transcribed / official_import / omr_confirmed(보류) |
+| entered_by, entered_at | 입력자, 입력 시각 (`service_date`와 별개) |
+| sheet_id | BIGINT NULL FK → record_sheets (종이 시트에서 옮긴 경우) |
+| scan_file_id | BIGINT NULL FK → files (종이 원본 스캔) |
+| entry_seconds | INT NULL, 입력 화면 체류 시간 (개선 효과 측정용, 개인 감시 목적 아님) |
 | notes TEXT | 특이사항 |
 | revision | 정정 시 증가 |
 | status | draft / submitted / locked(청구 확정 후) |
@@ -173,6 +178,17 @@ UNIQUE(schedule_id) — 일정당 기록 1건 (분할 방문 정책은 [Q-BIZ-03
 | written_by, approved_by, approved_at | |
 
 UNIQUE(client_id, period_type, period_from).
+
+**record_sheets** (사전 인쇄 종이 기록지)
+| 컬럼 | 설명 |
+|---|---|
+| id, sheet_code CHAR(12) UNIQUE | 무작위 코드(QR). 개인정보·순번 없음 |
+| schedule_ids JSON | 포함된 일정 |
+| form_version | |
+| printed_at, printed_by | |
+| status | printed / entered / voided |
+
+**record_phrases** — id, scope(center/user), text, use_count. 상용구. 개인정보를 넣지 않도록 입력 화면에서 경고.
 
 **record_revisions** — id, record_id, revision, before JSON, after JSON, reason, requested_by, approval_id FK, created_at. (정정·삭제 이력, 수정 불가)
 
